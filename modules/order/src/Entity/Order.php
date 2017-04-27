@@ -484,6 +484,15 @@ class Order extends ContentEntityBase implements OrderInterface {
         $this->setEmail($customer->getEmail());
       }
     }
+    else {
+      // Ensure there's a back-reference on each order item.
+      foreach ($this->getItems() as $order_item) {
+        if ($order_item->order_id->isEmpty()) {
+          $order_item->order_id = $this->id();
+          $order_item->save();
+        }
+      }
+    }
 
     // Maintain the completed timestamp.
     $state = $this->getState()->value;
@@ -493,7 +502,6 @@ class Order extends ContentEntityBase implements OrderInterface {
         $this->setCompletedTime(\Drupal::time()->getRequestTime());
       }
     }
-
     // Refresh draft orders on every save.
     if ($this->getState()->value == 'draft' && empty($this->getRefreshState())) {
       $this->setRefreshState(self::REFRESH_ON_SAVE);
@@ -507,6 +515,7 @@ class Order extends ContentEntityBase implements OrderInterface {
     parent::postSave($storage, $update);
 
     // Ensure there's a back-reference on each order item.
+    // Covers the "new order" use case not covered by preSave().
     foreach ($this->getItems() as $order_item) {
       if ($order_item->order_id->isEmpty()) {
         $order_item->order_id = $this->id();
